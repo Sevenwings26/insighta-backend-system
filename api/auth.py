@@ -5,8 +5,17 @@ import secrets
 import hashlib
 import base64
 from dotenv import load_dotenv
+from jose import jwt
+from datetime import datetime, timedelta, timezone
+
+from api.database import get_db
+from api.models import RefreshToken
+
+from sqlalchemy.orm import Session
 
 load_dotenv()
+SECRET = os.getenv("JWT_SECRET")
+ALGO = "HS256"
 
 # Oauth setup
 oauth = OAuth()
@@ -32,17 +41,7 @@ def generate_pkce_pair():
     return code_verifier, code_challenge
 
 
-from jose import jwt
-from datetime import datetime, timedelta, timezone
-
-SECRET = os.getenv("JWT_SECRET")
-ALGO = "HS256"
-
-
-from jose import jwt
-from api.database import RefreshToken, get_db
-from sqlalchemy.orm import Session
-
+# 
 def create_tokens(user, db: Session):
     now = datetime.now(timezone.utc)
 
@@ -72,6 +71,7 @@ def create_tokens(user, db: Session):
     db.commit()
 
     return access_token, refresh_token
+
 
 
 # access_token, refresh_token = create_tokens(user, db)

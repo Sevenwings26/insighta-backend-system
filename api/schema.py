@@ -7,6 +7,7 @@ from datetime import datetime
 class ProfileRequest(BaseModel):
     name: str
 
+
 class ProfileResponse(BaseModel):
     id: str
     name: str
@@ -23,4 +24,11 @@ class ProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
-        
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+# class StreamingResponse(BaseModel):
+#     id, name, gender, gender_probability, age, age_group, country_id, country_name, country_probability, created_at
+
+#     id: str

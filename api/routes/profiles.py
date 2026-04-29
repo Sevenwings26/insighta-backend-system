@@ -1,14 +1,22 @@
+import os
+import io
+import csv
 import httpx
 import asyncio
-from fastapi import APIRouter, Query, Depends, HTTPException
+from fastapi import APIRouter, Query, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, asc
-
-import os
-from api.database import get_db, Profile, User
+from datetime import datetime
+from api.database import get_db
+from api.models import Profile, User
+from api.schema import ProfileRequest, ProfileResponse
 from api.dependencies.rbac import require_admin, require_analyst
 from api.dependencies.versioning import require_api_version
-from api.schema import ProfileRequest, ProfileResponse
+from api.utils.pagination import build_pagination_response
+from api.utils.query_builder import build_profile_query
+from api.middleware.rate_limit import limiter
+
+
 
 # router 
 router = APIRouter(
@@ -29,7 +37,7 @@ def classify_age_group(age: int) -> str:
 # -----------------------------
 # POST /api/profiles
 # -----------------------------
-@router.post("/api/profiles", status_code=201)
+@router.post("", status_code=201)
 async def create_profile(
     paylaod: ProfileRequest,
     db: Session = Depends(get_db),
@@ -112,8 +120,10 @@ async def create_profile(
 # -----------------------------
 # GET /api/profiles
 # -----------------------------
-@router.get("/api/profiles")
+@router.get("")
+@limiter.limit("60/minute")
 def list_profiles(
+    request: Request,
     # Filters
     gender: str | None = None,
     country_id: str | None = None,
@@ -158,19 +168,6 @@ def list_profiles(
         "created_at": Profile.created_at,
         "gender_probability": Profile.gender_probability
     }
-    
-    target_column = allowed_sort_columns.get(sort_by, Profile.created_at)
-    
-    if order.lower() == "asc":
-        query = query.order_by(asc(target_column))
-    else:
-        query = query.order_by(desc(target_column))
-
-    allowed_sort_columns = {
-        "age": Profile.age,
-        "created_at": Profile.created_at,
-        "gender_probability": Profile.gender_probability
-    }
 
     if sort_by not in allowed_sort_columns:
         raise HTTPException(status_code=400, detail="Invalid sort field")
@@ -182,28 +179,20 @@ def list_profiles(
     else:
         query = query.order_by(desc(target_column), desc(Profile.id))
 
-    # 3. Pagination Logic
-    total_records = query.count()
-    skip = (page - 1) * limit
-    results = query.offset(skip).limit(limit).all()
+    return build_pagination_response(
+        request=request,
+        query=query,
+        page=page,
+        limit=limit,
+        serializer=lambda p: ProfileResponse.model_validate(p)
+    )
 
-
-    return {
-        "status": "success",
-        "page": page,
-        "limit": limit,
-        "total": total_records,
-        # "data": results,
-        "data": [ProfileResponse.model_validate(p) for p in results]
-        # "data": [ProfileResponse.model_validate(p) for p in results]
-
-    }
 
 
 # -----------------------------
 # GET /api/profiles{id}
 # -----------------------------
-@router.get("/api/profiles/{id}")
+@router.get("/{id}")
 def get_profile(
     id: str, 
     db: Session = Depends(get_db),
@@ -238,3 +227,93 @@ def delete_profile(
     db.delete(profile)
     db.commit()
 
+
+@router.get("/export")
+def export_profiles(
+    format: str = Query("csv"),
+    # Filters
+    gender: str | None = None,
+    country_id: str | None = None,
+    age_group: str | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
+    min_gender_probability: float | None = None,
+    min_country_probability: float | None = None,
+    # Sorting
+    sort_by: str = "created_at",
+    order: str = "desc",
+    db: Session = Depends(get_db),
+    user: User = Depends(require_analyst)
+):
+    if format != "csv":
+        raise HTTPException(
+            status_code=400,
+            detail="Only CSV format is supported"
+        )
+
+    # Build query (REUSE logic)
+    try:
+        query = build_profile_query(
+            db=db,
+            gender=gender,
+            country_id=country_id,
+            age_group=age_group,
+            min_age=min_age,
+            max_age=max_age,
+            min_gender_probability=min_gender_probability,
+            min_country_probability=min_country_probability,
+            sort_by=sort_by,
+            order=order
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid sort field")
+
+    results = query.all()
+
+    # Create CSV stream
+    def generate():
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+
+        # Header
+        writer.writerow([ 
+            "id", "name",
+            "gender", "gender_probability",
+            "sample_size", "age",
+            "age_group", "country_id",
+            "country_probability", "created_at" 
+            ])
+
+        yield buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
+
+        # Rows
+        for p in results:
+            writer.writerow([
+                p.id,
+                p.name,
+                p.gender,
+                p.gender_probability,
+                p.sample_size,
+                p.age,
+                p.age_group,
+                p.country_id,
+                "Unknown", # Replace with real country name lookup if available
+                p.country_probability,
+                p.created_at.isoformat() if p.created_at else None
+            ])
+
+            yield buffer.getvalue()
+            buffer.seek(0)
+            buffer.truncate(0)
+
+    filename = f"profiles_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.csv"
+
+    return ProfileResponse(
+        generate(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )

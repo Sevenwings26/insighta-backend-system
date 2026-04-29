@@ -1,14 +1,17 @@
 import re
 import httpx
 import asyncio
-from fastapi import APIRouter, Query, Depends, HTTPException
+from fastapi import APIRouter, Query, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, asc
 from fastapi.responses import JSONResponse
 from api.dependencies.rbac import require_admin, require_analyst
 from api.dependencies.versioning import require_api_version
+from api.utils.pagination import build_pagination_response
+
 import os
-from api.database import get_db, Profile, User
+from api.database import get_db
+from api.models import Profile, User
 from api.schema import ProfileRequest, ProfileResponse
 
 router = APIRouter(
@@ -28,8 +31,11 @@ COUNTRY_MAP = {
     "uganda": "UG"
 }
 
-@router.get("/api/profiles/search")
+
+
+@router.get("/search")
 def natural_language_search(
+    request: Request,
     q: str = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
@@ -103,16 +109,17 @@ def natural_language_search(
             content={"status": "error", "message": "Unable to interpret query"}
         )
 
-    total = query.count()
-    skip = (page - 1) * limit
-    results = query.offset(skip).limit(limit).all()
+    # total = query.count()
+    # skip = (page - 1) * limit
+    # results = query.offset(skip).limit(limit).all()
 
-    return {
-        "status": "success",
-        "page": page,
-        "limit": limit,
-        "total": total,
-        # "data": results
-        "data": [ProfileResponse.model_validate(p) for p in results]
-    }
+    return build_pagination_response(
+        request=request,
+        query=query,
+        page=page,
+        limit=limit,
+        serializer=lambda p: ProfileResponse.model_validate(p)
+    )
+
+
 

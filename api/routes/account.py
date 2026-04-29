@@ -1,15 +1,24 @@
-from fastapi import APIRouter, Request, Depends, HTTPException
-from sqlalchemy.orm import Session
-from datetime import datetime, timezone
 import os
 
-from api.database import get_db, User, RefreshToken
+from fastapi import APIRouter, Request, Depends, HTTPException
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from jose import JWTError, jwt
+from datetime import datetime, timezone
+
+from api.database import get_db
+from api.models import User, RefreshToken
+from api.schema import RefreshTokenRequest
 from api.auth import oauth, generate_pkce_pair, create_tokens
+
+from api.auth import SECRET, ALGO
+from api.middleware.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/github")
+@limiter.limit("10/minute")
 async def github_login(request: Request):
     code_verifier, code_challenge = generate_pkce_pair()
 
@@ -41,8 +50,10 @@ async def github_callback(request: Request, db: Session = Depends(get_db)):
 
     github_id = str(user_data["id"])
 
+    # retrieve user
     user = db.query(User).filter(User.github_id == github_id).first()
 
+    # create user 
     if not user:
         user = User(
             github_id=github_id,
@@ -65,16 +76,12 @@ async def github_callback(request: Request, db: Session = Depends(get_db)):
     }
 
 
-
-from fastapi import HTTPException
-from jose import JWTError, jwt
-from api.database import RefreshToken, User
-from api.auth import SECRET, ALGO
-
-
-@router.post("/auth/refresh")
-def refresh_token(payload: dict, db: Session = Depends(get_db)):
-    token = payload.get("refresh_token")
+@router.post("/refresh")
+def refresh_token(
+    payload: RefreshTokenRequest, 
+    db: Session = Depends(get_db)
+):
+    token = payload.refresh_token
 
     if not token:
         raise HTTPException(status_code=400, detail="Missing refresh token")
@@ -118,9 +125,9 @@ def refresh_token(payload: dict, db: Session = Depends(get_db)):
     }
 
 
-@router.post("/auth/logout")
-def logout(payload: dict, db: Session = Depends(get_db)):
-    token = payload.get("refresh_token")
+@router.post("/logout")
+def logout(payload: RefreshTokenRequest, db: Session = Depends(get_db)):
+    token = payload.refresh_token
 
     if not token:
         raise HTTPException(status_code=400, detail="Missing refresh token")

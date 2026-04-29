@@ -1,7 +1,6 @@
 from fastapi import Depends, HTTPException
 from api.dependencies.auth import get_current_user
-from api.database import User
-from api.database import UserRole
+from api.models import User, UserRole
 
 
 def require_roles(*allowed_roles: UserRole):

@@ -3,7 +3,8 @@ from fastapi.security import HTTPBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
-from api.database import get_db, User
+from api.database import get_db
+from api.models import User
 from api.auth import SECRET, ALGO
 
 security = HTTPBearer()
