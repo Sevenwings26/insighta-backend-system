@@ -35,7 +35,7 @@ async def github_login(request: Request):
     # Set CSRF cookie (will be validated on callback)
     response = await oauth.github.authorize_redirect(
         request,
-        os.getenv("GITHUB_REDIRECT_URI"),
+        os.getenv("REDIRECT_URI"),
         code_challenge=code_challenge,
         code_challenge_method="S256",
         state=csrf_token,  # CSRF token in state parameter

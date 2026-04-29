@@ -29,10 +29,12 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      ENVIRONMENT: production
       SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-      GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
-      GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
-      GITHUB_REDIRECT_URI: http://127.0.0.1:8000/auth/github/callback
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      REDIRECT_URI: http://127.0.0.1:8000/auth/github/callback
       PYTHONPATH: . 
 
     steps:
