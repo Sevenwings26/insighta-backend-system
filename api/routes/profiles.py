@@ -17,7 +17,6 @@ from api.utils.query_builder import build_profile_query
 from api.middleware.rate_limit import limiter
 
 
-
 # router 
 router = APIRouter(
     dependencies=[Depends(require_api_version)]
