@@ -107,8 +107,8 @@ def root():
         "slack_name": "Sevenwings",
         "github_repo": "https://github.com/Sevenwings26/insighta-backend-system.git",
         
-        "usage": "https://hng-stage1-data-persistence-api-des-swart.vercel.app",
-        "documentation": "https://hng-stage1-data-persistence-api-des-swart.vercel.app/docs",
+        "usage": "https://insighta-backend-system.onrender.com",
+        "documentation": "https://insighta-backend-system.onrender.com/docs",
     }
 
 
