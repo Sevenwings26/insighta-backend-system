@@ -44,9 +44,12 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET"))
 
 app.middleware("http")(logging_middleware)
 
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -102,7 +105,7 @@ def root():
         "project": "Insighta Labs API",
 
         "slack_name": "Sevenwings",
-        "github_repo": "https://github.com/Sevenwings26/HNG_Stage1-Data-Persistence-API-Design-Assessment.git",
+        "github_repo": "https://github.com/Sevenwings26/insighta-backend-system.git",
         
         "usage": "https://hng-stage1-data-persistence-api-des-swart.vercel.app",
         "documentation": "https://hng-stage1-data-persistence-api-des-swart.vercel.app/docs",

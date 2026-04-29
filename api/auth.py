@@ -73,6 +73,3 @@ def create_tokens(user, db: Session):
     return access_token, refresh_token
 
 
-
-# access_token, refresh_token = create_tokens(user, db)
-

@@ -3,6 +3,7 @@
 task1.md/
 task2.md/
 .env
+secret_keys.txt
 
 alembic/
 
