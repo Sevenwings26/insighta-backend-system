@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from api.database import get_db
-from api.models import User, RefreshToken, User_Role
+from api.models import User, RefreshToken, UserRole
 from api.auth import oauth, generate_pkce_pair, create_tokens
 from api.dependencies.rbac import require_admin, require_analyst
 from api.middleware.rate_limit import limiter
