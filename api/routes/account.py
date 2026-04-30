@@ -144,7 +144,8 @@ async def github_callback(
         value=access_token,
         httponly=True,
         secure=os.getenv("ENVIRONMENT") == "production",
-        samesite="lax",
+        # samesite="lax",
+        samesite="none",
         max_age=1800,
         path="/",
     )
@@ -153,7 +154,8 @@ async def github_callback(
         value=refresh_token,
         httponly=True,
         secure=os.getenv("ENVIRONMENT") == "production",
-        samesite="lax",
+        # samesite="lax",
+        samesite="none",
         max_age=604800,
         path="/",
     )
@@ -162,235 +164,235 @@ async def github_callback(
     return response
 
 
-# ─────────────────────────────────────────────
-# POST /auth/refresh
-# ─────────────────────────────────────────────
-@router.get("/github/callback")
-async def github_callback(
-    request: Request,
-    state: Optional[str] = None,
-    db: Session = Depends(get_db),
-    code: Optional[str] = None,
-):
-    # ---------------------------------------------------
-    # Reject missing authorization code
-    # ---------------------------------------------------
-    if not code:
-        return error_response(
-            400,
-            "Missing authorization code"
-        )
+# # ─────────────────────────────────────────────
+# # POST /auth/refresh
+# # ─────────────────────────────────────────────
+# @router.get("/github/callback")
+# async def github_callback(
+#     request: Request,
+#     state: Optional[str] = None,
+#     db: Session = Depends(get_db),
+#     code: Optional[str] = None,
+# ):
+#     # ---------------------------------------------------
+#     # Reject missing authorization code
+#     # ---------------------------------------------------
+#     if not code:
+#         return error_response(
+#             400,
+#             "Missing authorization code"
+#         )
 
-    # ---------------------------------------------------
-    # TEST MODE SUPPORT (For automated graders)
-    # ---------------------------------------------------
-    if code == "test_code":
+#     # ---------------------------------------------------
+#     # TEST MODE SUPPORT (For automated graders)
+#     # ---------------------------------------------------
+#     if code == "test_code":
 
-        user = db.query(User).filter(
-            User.github_id == "test_github_id"
-        ).first()
+#         user = db.query(User).filter(
+#             User.github_id == "test_github_id"
+#         ).first()
 
-        if not user:
-            user = User(
-                github_id="test_github_id",
-                username="testuser",
-                email="test@example.com",
-                role=User_Role.ADMIN,   # IMPORTANT
-            )
+#         if not user:
+#             user = User(
+#                 github_id="test_github_id",
+#                 username="testuser",
+#                 email="test@example.com",
+#                 role=UserRole.ADMIN,   # IMPORTANT
+#             )
 
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+#             db.add(user)
+#             db.commit()
+#             db.refresh(user)
 
-        user.last_login_at = datetime.now(timezone.utc)
+#         user.last_login_at = datetime.now(timezone.utc)
 
-        db.commit()
-        db.refresh(user)
+#         db.commit()
+#         db.refresh(user)
 
-        access_token, refresh_token = create_tokens(
-            user,
-            db
-        )
+#         access_token, refresh_token = create_tokens(
+#             user,
+#             db
+#         )
 
-        response = JSONResponse(
-            content={
-                "status": "success",
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
-        )
+#         response = JSONResponse(
+#             content={
+#                 "status": "success",
+#                 "access_token": access_token,
+#                 "refresh_token": refresh_token,
+#             }
+#         )
 
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=os.getenv("ENVIRONMENT") == "production",
-            samesite="lax",
-            max_age=1800,
-            path="/",
-        )
+#         response.set_cookie(
+#             key="access_token",
+#             value=access_token,
+#             httponly=True,
+#             secure=os.getenv("ENVIRONMENT") == "production",
+#             samesite="lax",
+#             max_age=1800,
+#             path="/",
+#         )
 
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            secure=os.getenv("ENVIRONMENT") == "production",
-            samesite="lax",
-            max_age=604800,
-            path="/",
-        )
+#         response.set_cookie(
+#             key="refresh_token",
+#             value=refresh_token,
+#             httponly=True,
+#             secure=os.getenv("ENVIRONMENT") == "production",
+#             samesite="lax",
+#             max_age=604800,
+#             path="/",
+#         )
 
-        return response
+#         return response
 
-    # ---------------------------------------------------
-    # CSRF Validation
-    # ---------------------------------------------------
-    stored_csrf = request.session.get("csrf_token")
-    cookie_csrf = request.cookies.get("csrf_token")
+#     # ---------------------------------------------------
+#     # CSRF Validation
+#     # ---------------------------------------------------
+#     stored_csrf = request.session.get("csrf_token")
+#     cookie_csrf = request.cookies.get("csrf_token")
 
-    if not stored_csrf or not cookie_csrf:
-        return error_response(
-            400,
-            "Missing CSRF token"
-        )
+#     if not stored_csrf or not cookie_csrf:
+#         return error_response(
+#             400,
+#             "Missing CSRF token"
+#         )
 
-    if stored_csrf != cookie_csrf:
-        return error_response(
-            403,
-            "CSRF validation failed"
-        )
+#     if stored_csrf != cookie_csrf:
+#         return error_response(
+#             403,
+#             "CSRF validation failed"
+#         )
 
-    if stored_csrf != state:
-        return error_response(
-            403,
-            "CSRF state mismatch"
-        )
+#     if stored_csrf != state:
+#         return error_response(
+#             403,
+#             "CSRF state mismatch"
+#         )
 
-    csrf_time = request.session.get(
-        "csrf_token_time",
-        0
-    )
+#     csrf_time = request.session.get(
+#         "csrf_token_time",
+#         0
+#     )
 
-    if (
-        datetime.now(timezone.utc).timestamp()
-        - csrf_time
-        > 300
-    ):
-        return error_response(
-            403,
-            "CSRF token expired"
-        )
+#     if (
+#         datetime.now(timezone.utc).timestamp()
+#         - csrf_time
+#         > 300
+#     ):
+#         return error_response(
+#             403,
+#             "CSRF token expired"
+#         )
 
-    request.session.pop("csrf_token", None)
-    request.session.pop("csrf_token_time", None)
+#     request.session.pop("csrf_token", None)
+#     request.session.pop("csrf_token_time", None)
 
-    # ---------------------------------------------------
-    # PKCE Validation
-    # ---------------------------------------------------
-    code_verifier = request.session.get(
-        "code_verifier"
-    )
+#     # ---------------------------------------------------
+#     # PKCE Validation
+#     # ---------------------------------------------------
+#     code_verifier = request.session.get(
+#         "code_verifier"
+#     )
 
-    if not code_verifier:
-        return error_response(
-            400,
-            "Missing PKCE verifier"
-        )
+#     if not code_verifier:
+#         return error_response(
+#             400,
+#             "Missing PKCE verifier"
+#         )
 
-    # ---------------------------------------------------
-    # Exchange GitHub code for access token
-    # ---------------------------------------------------
-    try:
-        token = await oauth.github.authorize_access_token(
-            request,
-            code_verifier=code_verifier
-        )
+#     # ---------------------------------------------------
+#     # Exchange GitHub code for access token
+#     # ---------------------------------------------------
+#     try:
+#         token = await oauth.github.authorize_access_token(
+#             request,
+#             code_verifier=code_verifier
+#         )
 
-    except Exception as e:
-        return error_response(
-            400,
-            f"OAuth failed: {str(e)}"
-        )
+#     except Exception as e:
+#         return error_response(
+#             400,
+#             f"OAuth failed: {str(e)}"
+#         )
 
-    # ---------------------------------------------------
-    # Fetch GitHub User
-    # ---------------------------------------------------
-    resp = await oauth.github.get(
-        "user",
-        token=token
-    )
+#     # ---------------------------------------------------
+#     # Fetch GitHub User
+#     # ---------------------------------------------------
+#     resp = await oauth.github.get(
+#         "user",
+#         token=token
+#     )
 
-    user_data = resp.json()
+#     user_data = resp.json()
 
-    github_id = str(user_data["id"])
+#     github_id = str(user_data["id"])
 
-    # ---------------------------------------------------
-    # Find or Create User
-    # ---------------------------------------------------
-    user = db.query(User).filter(
-        User.github_id == github_id
-    ).first()
+#     # ---------------------------------------------------
+#     # Find or Create User
+#     # ---------------------------------------------------
+#     user = db.query(User).filter(
+#         User.github_id == github_id
+#     ).first()
 
-    if not user:
+#     if not user:
 
-        user = User(
-            github_id=github_id,
-            username=user_data["login"],
-            email=user_data.get("email"),
-            avatar_url=user_data.get("avatar_url"),
-            role=User_Role.ANALYST,
-        )
+#         user = User(
+#             github_id=github_id,
+#             username=user_data["login"],
+#             email=user_data.get("email"),
+#             avatar_url=user_data.get("avatar_url"),
+#             role=UserRole.ANALYST,
+#         )
 
-        db.add(user)
+#         db.add(user)
 
-    user.last_login_at = datetime.now(
-        timezone.utc
-    )
+#     user.last_login_at = datetime.now(
+#         timezone.utc
+#     )
 
-    db.commit()
-    db.refresh(user)
+#     db.commit()
+#     db.refresh(user)
 
-    # ---------------------------------------------------
-    # Generate Tokens
-    # ---------------------------------------------------
-    access_token, refresh_token = create_tokens(
-        user,
-        db
-    )
+#     # ---------------------------------------------------
+#     # Generate Tokens
+#     # ---------------------------------------------------
+#     access_token, refresh_token = create_tokens(
+#         user,
+#         db
+#     )
 
-    # ---------------------------------------------------
-    # Redirect to frontend dashboard
-    # ---------------------------------------------------
-    response = RedirectResponse(
-        url=f"{FRONTEND_URL}/dashboard"
-    )
+#     # ---------------------------------------------------
+#     # Redirect to frontend dashboard
+#     # ---------------------------------------------------
+#     response = RedirectResponse(
+#         url=f"{FRONTEND_URL}/dashboard"
+#     )
 
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=os.getenv("ENVIRONMENT") == "production",
-        samesite="lax",
-        max_age=1800,
-        path="/",
-    )
+#     response.set_cookie(
+#         key="access_token",
+#         value=access_token,
+#         httponly=True,
+#         secure=os.getenv("ENVIRONMENT") == "production",
+#         samesite="lax",
+#         max_age=1800,
+#         path="/",
+#     )
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=os.getenv("ENVIRONMENT") == "production",
-        samesite="lax",
-        max_age=604800,
-        path="/",
-    )
+#     response.set_cookie(
+#         key="refresh_token",
+#         value=refresh_token,
+#         httponly=True,
+#         secure=os.getenv("ENVIRONMENT") == "production",
+#         samesite="lax",
+#         max_age=604800,
+#         path="/",
+#     )
 
-    request.session.pop(
-        "code_verifier",
-        None
-    )
+#     request.session.pop(
+#         "code_verifier",
+#         None
+#     )
 
-    return response
+#     return response
 
 
 
