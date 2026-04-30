@@ -12,7 +12,7 @@ At this stage, you are expected to:
 - Persist data in a database
 - Design clean and usable APIs
 
-This stage is partially automated and partially reviewed. Only candidates who meet the required quality threshold will move to Stage 2.
+<!-- This stage is partially automated and partially reviewed. Only candidates who meet the required quality threshold will move to Stage 2. -->
 
 
 

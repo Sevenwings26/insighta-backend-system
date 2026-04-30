@@ -1,3 +1,4 @@
+# api/auth.py
 from authlib.integrations.starlette_client import OAuth
 from fastapi import Request
 import os
